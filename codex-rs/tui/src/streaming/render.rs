@@ -23,6 +23,7 @@ use std::path::Path;
 /// re-rendered as committed source arrives.
 pub(super) struct StreamingRender {
     pub(super) list_spacing: ListSpacing,
+    pub(super) max_prose_width: Option<usize>,
     pub(super) lines: Vec<HyperlinkLine>,
     pub(super) pending_math_start: Option<usize>,
     pub(super) mutable_fence_start: Option<usize>,
@@ -42,6 +43,7 @@ impl StreamingRender {
     pub(super) fn new() -> Self {
         Self {
             list_spacing: ListSpacing::AfterMultiline,
+            max_prose_width: None,
             lines: Vec::with_capacity(64),
             pending_math_start: None,
             mutable_fence_start: None,
@@ -87,6 +89,7 @@ impl StreamingRender {
                     width,
                     Some(cwd),
                     self.list_spacing,
+                    self.max_prose_width,
                 );
                 self.has_reference_link_definition = rendered.has_reference_link_definition;
                 self.pending_math_start = rendered.pending_math_start;
@@ -101,6 +104,7 @@ impl StreamingRender {
                         width,
                         Some(cwd),
                         self.list_spacing,
+                        self.max_prose_width,
                     );
                     self.pending_math_start = rendered.pending_math_start;
                     self.mutable_fence_start = rendered.mutable_fence_start;
@@ -112,6 +116,7 @@ impl StreamingRender {
                     render_mode,
                     inline_visualization_context,
                     self.list_spacing,
+                    self.max_prose_width,
                 )
             }
         };
@@ -180,6 +185,7 @@ impl StreamingRender {
             width,
             Some(cwd),
             self.list_spacing,
+            self.max_prose_width,
         );
         self.pending_math_start = pending
             .pending_math_start
@@ -216,6 +222,7 @@ impl StreamingRender {
                 render_mode,
                 inline_visualization_context,
                 self.list_spacing,
+                self.max_prose_width,
             );
             self.stable_source_len += boundary;
             newly_stable_rendered_len = Some(newly_stable.len());
@@ -236,6 +243,7 @@ impl StreamingRender {
     }
 }
 
+#[cfg(test)]
 pub(super) fn render_source(
     source: &str,
     width: Option<usize>,
@@ -250,6 +258,7 @@ pub(super) fn render_source(
         render_mode,
         inline_visualization_context,
         ListSpacing::AfterMultiline,
+        crate::markdown_render::prose_width::current(),
     )
 }
 
@@ -260,6 +269,7 @@ pub(super) fn render_source_with_list_spacing(
     render_mode: HistoryRenderMode,
     inline_visualization_context: Option<&InlineVisualizationContext>,
     list_spacing: ListSpacing,
+    max_prose_width: Option<usize>,
 ) -> Vec<HyperlinkLine> {
     match render_mode {
         HistoryRenderMode::Rich => render_markdown_agent_with_list_spacing(
@@ -268,6 +278,7 @@ pub(super) fn render_source_with_list_spacing(
             Some(cwd),
             inline_visualization_context,
             list_spacing,
+            max_prose_width,
         ),
         HistoryRenderMode::Raw => plain_hyperlink_lines(raw_lines_from_source(source)),
     }

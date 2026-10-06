@@ -284,6 +284,7 @@ async fn new_config(
         animations: true,
         tui_effects: Default::default(),
         tui_rendering: Default::default(),
+        tui_max_prose_width: None,
         show_tooltips: true,
         tui_show_server_version_notice: true,
         tui_auto_recap: true,

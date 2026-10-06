@@ -105,6 +105,7 @@ struct StreamCore {
 }
 
 struct StablePrefixLenCache {
+    max_prose_width: Option<usize>,
     /// Byte offset of the candidate table/header start in committed source.
     source_start: usize,
     /// Width that produced `stable_prefix_len`.
@@ -122,11 +123,14 @@ impl StreamCore {
         cwd: &Path,
         render_mode: HistoryRenderMode,
         inline_visualization_context: Option<InlineVisualizationContext>,
+        max_prose_width: Option<usize>,
     ) -> Self {
+        let mut render = StreamingRender::new();
+        render.max_prose_width = max_prose_width;
         Self {
             state: StreamState::new(width, cwd),
             width,
-            render: StreamingRender::new(),
+            render,
             preview: ProsePreview::default(),
             enqueued_stable_len: 0,
             emitted_stable_len: 0,
@@ -183,6 +187,7 @@ impl StreamCore {
             && (self.render.pending_math_start.is_some()
                 || prose_preview && (pending.starts_with("$$") || pending.starts_with("\\[")));
         if math || prose_preview {
+            self.preview.max_prose_width = self.render.max_prose_width;
             self.preview.update(
                 pending,
                 self.width,
@@ -216,6 +221,7 @@ impl StreamCore {
             self.render_mode,
             self.inline_visualization_context.as_ref(),
             self.render.list_spacing,
+            self.render.max_prose_width,
         );
         let remaining = rendered.split_off(self.emitted_stable_len.min(rendered.len()));
         (remaining, source)
@@ -395,6 +401,7 @@ impl StreamCore {
                     mode,
                     self.inline_visualization_context.as_ref(),
                     self.render.list_spacing,
+                    self.render.max_prose_width,
                 )
                 .len()
             };
@@ -544,6 +551,7 @@ impl StreamCore {
         if let Some(cache) = &self.stable_prefix_len_cache
             && cache.source_start == source_start
             && cache.width == self.width
+            && cache.max_prose_width == self.render.max_prose_width
         {
             tracing::trace!(
                 source_start,
@@ -562,6 +570,7 @@ impl StreamCore {
             Some(self.cwd.as_path()),
             self.inline_visualization_context.as_ref(),
             self.render.list_spacing,
+            self.render.max_prose_width,
         );
         let stable_prefix_len = stable_prefix_render.len();
         tracing::trace!(
@@ -572,6 +581,7 @@ impl StreamCore {
             "table holdback stable-prefix render",
         );
         self.stable_prefix_len_cache = Some(StablePrefixLenCache {
+            max_prose_width: self.render.max_prose_width,
             source_start,
             width: self.width,
             stable_prefix_len,
@@ -617,7 +627,13 @@ impl StreamController {
         inline_visualization_context: Option<InlineVisualizationContext>,
     ) -> Self {
         Self {
-            core: StreamCore::new(width, cwd, render_mode, inline_visualization_context),
+            core: StreamCore::new(
+                width,
+                cwd,
+                render_mode,
+                inline_visualization_context,
+                crate::markdown_render::prose_width::current(),
+            ),
             header_emitted: false,
         }
     }
@@ -739,6 +755,7 @@ impl PlanStreamController {
                 cwd,
                 render_mode,
                 /*inline_visualization_context*/ None,
+                None,
             ),
             header_emitted: false,
             top_padding_emitted: false,
@@ -2097,3 +2114,74 @@ mod tests {
 #[cfg(test)]
 #[path = "rendering_preferences_tests.rs"]
 mod rendering_preferences_tests;
+
+#[cfg(test)]
+mod max_prose_width_tests {
+    use super::*;
+    use crate::history_cell::HistoryCell;
+    use crate::markdown_render::prose_width;
+
+    #[test]
+    fn agent_stream_preview_completion_resize_and_plan_exclusion() {
+        let cwd = Path::new("/");
+        let text = "한글 English inline text ".repeat(20);
+        for limit in [80, 100] {
+            prose_width::init(Some(limit));
+            let mut agent = StreamController::new(Some(158), cwd, HistoryRenderMode::Rich);
+            agent.push(&text);
+            assert!(!agent.core.preview.lines.is_empty());
+            assert!(
+                agent
+                    .core
+                    .preview
+                    .lines
+                    .iter()
+                    .all(|line| line.width() <= limit)
+            );
+            agent.push("\n\n");
+            for width in [158, 58, 158] {
+                agent.set_width(Some(width));
+                assert!(
+                    agent
+                        .core
+                        .render
+                        .lines
+                        .iter()
+                        .all(|line| line.width() <= limit.min(width))
+                );
+            }
+            let (_, source) = agent.core.finalize_remaining();
+            let completed = history_cell::AgentMarkdownCell::new(source.clone(), cwd);
+            let lines = completed.display_hyperlink_lines(160);
+            assert!(lines.iter().all(|line| line.width() <= limit + 2));
+            // Reconstructed source-backed cells follow the same setting after resume.
+            let resumed = history_cell::AgentMarkdownCell::new(source, cwd);
+            assert_eq!(lines, resumed.display_hyperlink_lines(160));
+            let reason =
+                history_cell::ReasoningSummaryCell::new(String::new(), text.clone(), cwd, false);
+            assert!(
+                reason
+                    .display_hyperlink_lines(160)
+                    .iter()
+                    .all(|line| line.width() <= limit + 2)
+            );
+            let mut plan = PlanStreamController::new(Some(158), cwd, HistoryRenderMode::Rich);
+            plan.push(&format!("{text}\n"));
+            assert!(
+                plan.core
+                    .render
+                    .lines
+                    .iter()
+                    .any(|line| line.width() > limit)
+            );
+            prose_width::init(None);
+            let mut baseline = PlanStreamController::new(Some(158), cwd, HistoryRenderMode::Rich);
+            baseline.push(&format!("{text}\n"));
+            assert!(crate::terminal_hyperlinks::lines_with_sources_eq(
+                &plan.core.render.lines,
+                &baseline.core.render.lines
+            ));
+        }
+        prose_width::init(None);
+    }
+}

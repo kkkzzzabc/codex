@@ -13,6 +13,7 @@ pub(super) struct MarkdownRenderCache {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct MarkdownRenderCacheKey {
     pub(super) width: u16,
+    pub(super) max_prose_width: Option<usize>,
     pub(super) list_spacing: ListSpacing,
     pub(super) syntax_theme_revision: u64,
     pub(super) terminal_fg: Option<(u8, u8, u8)>,
@@ -33,6 +34,7 @@ impl MarkdownRenderCache {
     ) -> Vec<HyperlinkLine> {
         let key = MarkdownRenderCacheKey {
             width,
+            max_prose_width: crate::markdown_render::prose_width::current(),
             list_spacing,
             syntax_theme_revision: crate::render::highlight::syntax_theme_revision(),
             terminal_fg: crate::terminal_palette::default_fg(),

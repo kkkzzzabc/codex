@@ -262,6 +262,9 @@ pub(crate) fn prefix_hyperlink_lines(
                 .take()
                 .unwrap_or_else(|| LogicalLineSource::from_line(&line.line));
             source.prefix_bytes += prefix.content.len();
+            if source.max_prose_width.is_some() {
+                source.prose_outer_prefix_width += shift;
+            }
             source
                 .continuation_indent
                 .spans

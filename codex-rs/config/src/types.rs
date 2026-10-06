@@ -801,6 +801,13 @@ pub const DEFAULT_TERMINAL_RESIZE_REFLOW_FALLBACK_MAX_ROWS: usize = 1_000;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default, JsonSchema)]
 #[schemars(deny_unknown_fields)]
 pub struct Tui {
+    /// Maximum terminal columns for assistant prose and reasoning summaries, including list
+    /// and quote indentation. At least 40; unset uses the available width. Rich blocks use
+    /// the full available width.
+    #[serde(default, deserialize_with = "crate::tui_prose_width::deserialize")]
+    #[schemars(schema_with = "crate::tui_prose_width::schema")]
+    pub max_prose_width: Option<usize>,
+
     #[serde(default, flatten)]
     pub notification_settings: TuiNotificationSettings,
 

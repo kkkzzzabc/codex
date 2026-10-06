@@ -371,3 +371,131 @@ fn background_stdin_copy_preserves_indentation_and_newlines() {
     assert!(layout.text().ends_with(stdin));
     assert_eq!(layout.rewrap(/*width*/ 48).text(), layout.text());
 }
+
+#[test]
+fn max_prose_width_survives_resize_copy_search_and_links() {
+    let words = "한글 English `inline code` ".repeat(12);
+    let source = format!(
+        "- {words}\n    - {words}\n\n> {words} https://example.com/{} [link](https://example.com)\n",
+        "segment/".repeat(30),
+    );
+    let render = |limit| {
+        crate::terminal_hyperlinks::prefix_hyperlink_lines(
+            crate::markdown::render_markdown_agent_with_list_spacing(
+                &source,
+                Some(158),
+                Some(std::path::Path::new("/")),
+                None,
+                crate::markdown_render::ListSpacing::Uniform,
+                limit,
+            ),
+            "• ".dim(),
+            "  ".into(),
+        )
+    };
+    let baseline = TextLayout::new(render(None), 160);
+    for limit in [80, 100] {
+        let initial = TextLayout::new(render(Some(limit)), 160);
+        for width in [160, 60, 160] {
+            let layout = initial.rewrap(width);
+            assert_eq!(layout.text(), baseline.text());
+            let copied = |layout: &TextLayout| {
+                let mut selected = Vec::new();
+                layout.copy_lines(0..layout.text().len(), "", &mut selected);
+                crate::markdown_copy::selection(&selected, layout.text())
+            };
+            assert_eq!(copied(&layout), copied(&baseline));
+            let mut buf = Buffer::empty(Rect::new(0, 0, width, layout.row_count() as u16));
+            layout.render(buf.area, &mut buf, 0);
+            for row in 0..layout.row_count() {
+                // Includes the two-column assistant prefix, excludes it from the configured cap.
+                for col in ((limit + 2).min(usize::from(width)))..usize::from(width) {
+                    assert_eq!(buf[(col as u16, row as u16)].symbol(), " ");
+                }
+            }
+            let found = layout.text().find("link").unwrap();
+            let row = layout.row_for_offset(found);
+            let column = layout.column_for_offset(found);
+            assert_eq!(layout.position_at(row, column), found);
+            assert_eq!(
+                layout.link_at(row, column).as_deref(),
+                Some("https://example.com")
+            );
+        }
+        assert_eq!(
+            initial.row_count(),
+            initial.rewrap(60).rewrap(160).row_count()
+        );
+    }
+}
+
+#[test]
+fn reasoning_prose_limit_preserves_copy_and_rich_blocks() {
+    use crate::history_cell::HistoryCell;
+    let content = format!(
+        "> {}\n\n```text\n{}\n```",
+        "한글 reasoning words ".repeat(18),
+        "code ".repeat(28)
+    );
+    let cell = crate::history_cell::ReasoningSummaryCell::new(
+        String::new(),
+        content,
+        std::path::Path::new("/"),
+        false,
+    );
+    let copied = |layout: &TextLayout| {
+        let mut selected = Vec::new();
+        layout.copy_lines(0..layout.text().len(), "", &mut selected);
+        crate::markdown_copy::selection(&selected, layout.text())
+    };
+    crate::markdown_render::prose_width::init(None);
+    let baseline = TextLayout::new(cell.display_hyperlink_lines(160), 160);
+    crate::markdown_render::prose_width::init(Some(80));
+    let lines = cell.display_hyperlink_lines(160);
+    assert!(
+        lines
+            .iter()
+            .filter(|line| line
+                .source
+                .as_ref()
+                .is_some_and(|source| source.max_prose_width.is_some()))
+            .all(|line| line.width() <= 82)
+    );
+    assert!(lines.iter().any(|line| line.width() > 82));
+    let limited = TextLayout::new(lines, 160);
+    assert_eq!(limited.text(), baseline.text());
+    assert_eq!(copied(&limited), copied(&baseline));
+    assert_eq!(copied(&limited.rewrap(60).rewrap(160)), copied(&baseline));
+    crate::markdown_render::prose_width::init(None);
+}
+
+#[test]
+fn emitted_stream_cells_keep_prose_gutter_and_hanging_indent() {
+    use crate::history_cell::HistoryCell;
+    let source = format!("- {}", "한글 streamed text ".repeat(30));
+    let rendered = crate::markdown::render_markdown_agent_with_list_spacing(
+        &source,
+        Some(158),
+        Some(std::path::Path::new("/")),
+        None,
+        crate::markdown_render::ListSpacing::Uniform,
+        Some(80),
+    );
+    let expected = TextLayout::new(
+        prefix_hyperlink_lines(rendered.clone(), "• ".dim(), "  ".into()),
+        160,
+    );
+    let cell = crate::history_cell::AgentMessageCell::new_hyperlink_lines(rendered, true);
+    let actual = TextLayout::new(cell.display_hyperlink_lines(160), 160);
+    assert_eq!(actual.text(), expected.text());
+    assert_eq!(actual.row_count(), expected.row_count());
+    assert_eq!(
+        actual.rewrap(60).rewrap(160).row_count(),
+        expected.row_count()
+    );
+    let mut actual_buf = Buffer::empty(Rect::new(0, 0, 160, actual.row_count() as u16));
+    let mut expected_buf = actual_buf.clone();
+    actual.render(actual_buf.area, &mut actual_buf, 0);
+    expected.render(expected_buf.area, &mut expected_buf, 0);
+    assert_eq!(actual_buf, expected_buf);
+}

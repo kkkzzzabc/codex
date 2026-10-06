@@ -529,6 +529,7 @@ impl App {
         }
         chat_widget.restore_kill_buffer_snapshot(self.chat_widget.take_kill_buffer_snapshot());
         crate::markdown_render::preferences::init(chat_widget.local_settings.tui.rendering);
+        crate::markdown_render::prose_width::init(chat_widget.local_settings.tui.max_prose_width);
         let mut previous = std::mem::replace(&mut self.chat_widget, chat_widget);
         if previous.realtime_conversation_is_running() {
             previous.park_voice();

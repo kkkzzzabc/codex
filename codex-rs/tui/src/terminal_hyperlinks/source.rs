@@ -38,6 +38,10 @@ pub(crate) struct LogicalLineSource {
     pub(crate) continuation_indent: Line<'static>,
     /// Blank columns after wrapped content; they remain outside the copied source text.
     pub(crate) right_reserve: u16,
+    /// Prose cap including Markdown indentation, excluding the assistant gutter.
+    pub(crate) max_prose_width: Option<usize>,
+    /// Display columns added outside the prose renderer (not source bytes).
+    pub(crate) prose_outer_prefix_width: usize,
 }
 
 impl LogicalLineSource {
@@ -55,6 +59,8 @@ impl LogicalLineSource {
             wrap_policy: LineWrapPolicy::Word,
             continuation_indent: Line::default(),
             right_reserve: 0,
+            max_prose_width: None,
+            prose_outer_prefix_width: 0,
         }
     }
 
@@ -115,6 +121,8 @@ impl LogicalLineSource {
             wrap_policy: self.wrap_policy,
             continuation_indent: self.continuation_indent.clone(),
             right_reserve: self.right_reserve,
+            max_prose_width: self.max_prose_width,
+            prose_outer_prefix_width: self.prose_outer_prefix_width,
         }
     }
 }

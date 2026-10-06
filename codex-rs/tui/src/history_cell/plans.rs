@@ -134,6 +134,7 @@ impl ProposedPlanCell {
                 Some(self.cwd.as_path()),
                 /*inline_visualization_context*/ None,
                 list_spacing,
+                None,
             );
             if body.is_empty() {
                 body.push(HyperlinkLine::new(Line::from("(empty)".dim().italic())));

@@ -86,6 +86,7 @@ pub(crate) fn render_markdown_agent_with_links_and_cwd(
         cwd,
         /*inline_visualization_context*/ None,
         ListSpacing::AfterMultiline,
+        crate::markdown_render::prose_width::current(),
     )
 }
 
@@ -95,6 +96,7 @@ pub(crate) fn render_markdown_agent_with_list_spacing(
     cwd: Option<&Path>,
     inline_visualization_context: Option<&InlineVisualizationContext>,
     list_spacing: ListSpacing,
+    max_prose_width: Option<usize>,
 ) -> Vec<HyperlinkLine> {
     let rewritten = rewrite_inline_visualizations(markdown_source, inline_visualization_context);
     let normalized = normalize_markdown_for_rendering(&rewritten.markdown);
@@ -108,6 +110,7 @@ pub(crate) fn render_markdown_agent_with_list_spacing(
         cwd,
         &is_hidden_link_destination,
         list_spacing,
+        max_prose_width,
     )
     .lines;
     for hyperlink in lines.iter_mut().flat_map(|line| &mut line.hyperlinks) {
@@ -128,6 +131,7 @@ pub(crate) fn render_streaming_markdown_agent_with_links_and_cwd(
     width: Option<usize>,
     cwd: Option<&Path>,
     list_spacing: ListSpacing,
+    max_prose_width: Option<usize>,
 ) -> crate::markdown_render::StreamingMarkdownRender {
     let normalized = normalize_markdown_for_rendering(markdown_source);
     let mut rendered = crate::markdown_render::render_streaming_markdown_lines_with_width_and_cwd(
@@ -136,6 +140,7 @@ pub(crate) fn render_streaming_markdown_agent_with_links_and_cwd(
         cwd,
         &crate::markdown_render::hide_web_link_destination,
         list_spacing,
+        max_prose_width,
     );
     if normalized != markdown_source {
         // Fence unwrapping removes opening/closing lines. A normalized tail that is still a raw

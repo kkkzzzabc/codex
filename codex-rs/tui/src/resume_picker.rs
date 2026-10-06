@@ -3375,6 +3375,7 @@ fn render_transcript_content_lines(
                 cwd,
                 &|_| false,
                 crate::markdown_render::ListSpacing::AfterMultiline,
+                None,
             )
             .lines
             .into_iter()
