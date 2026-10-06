@@ -79,6 +79,9 @@ mod local_links;
 mod math;
 mod mermaid;
 pub(crate) mod preferences;
+pub(crate) mod prose_width;
+#[cfg(test)]
+mod prose_width_tests;
 mod source_tables;
 mod streaming;
 pub(crate) use streaming::render_with_copy_sources;
@@ -397,6 +400,16 @@ pub(crate) fn render_markdown_lines_with_width_cwd_and_hidden_link_destinations(
     cwd: Option<&Path>,
     is_hidden_link_destination: &dyn Fn(&str) -> bool,
 ) -> Vec<HyperlinkLine> {
+    render_markdown_lines_with_prose_width(input, width, cwd, is_hidden_link_destination, None)
+}
+
+pub(crate) fn render_markdown_lines_with_prose_width(
+    input: &str,
+    width: Option<usize>,
+    cwd: Option<&Path>,
+    is_hidden_link_destination: &dyn Fn(&str) -> bool,
+    max_prose_width: Option<usize>,
+) -> Vec<HyperlinkLine> {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TABLES);
@@ -407,6 +420,8 @@ pub(crate) fn render_markdown_lines_with_width_cwd_and_hidden_link_destinations(
         math.events(Parser::new_ext(&math.markdown, options).into_offset_iter()),
     ));
     let mut w = Writer::new(input, width, cwd, is_hidden_link_destination);
+    w.max_prose_width = max_prose_width;
+    w.display_math_ranges = math.display_ranges.clone();
     // Drop the consumed parser before the rendering state, including on unwind.
     let mut parser = parser;
     w.run(&mut parser);
@@ -466,6 +481,10 @@ struct Writer<'a, 'policy> {
     code_block_buffer: String,
     code_block_content_end: usize,
     wrap_width: Option<usize>,
+    max_prose_width: Option<usize>,
+    current_line_is_rich_block: bool,
+    display_math_ranges: Vec<std::ops::Range<usize>>,
+    in_display_math: bool,
     cwd: Option<PathBuf>,
     is_hidden_link_destination: &'policy dyn Fn(&str) -> bool,
     line_ends_with_local_link_target: bool,
@@ -511,6 +530,10 @@ impl<'a, 'policy> Writer<'a, 'policy> {
             code_block_buffer: String::new(),
             code_block_content_end: 0,
             wrap_width,
+            max_prose_width: None,
+            current_line_is_rich_block: false,
+            display_math_ranges: Vec::new(),
+            in_display_math: false,
             cwd: cwd.map(Path::to_path_buf),
             is_hidden_link_destination,
             line_ends_with_local_link_target: false,
@@ -571,7 +594,12 @@ impl<'a, 'policy> Writer<'a, 'policy> {
                 if self.in_code_block {
                     self.code_block_content_end = range.end;
                 }
+                self.in_display_math = self
+                    .display_math_ranges
+                    .iter()
+                    .any(|math| math.start < range.end && range.start < math.end);
                 self.text(text);
+                self.in_display_math = false;
             }
             Event::Code(code) => self.code(code),
             Event::SoftBreak => self.soft_break(),
@@ -891,6 +919,7 @@ impl<'a, 'policy> Writer<'a, 'policy> {
             let content = line.to_string();
             let style = self.inline_styles.last().copied().unwrap_or_default();
             self.push_text_spans(&content, style);
+            self.current_line_is_rich_block |= self.in_display_math;
         }
         self.needs_newline = false;
     }
@@ -1213,6 +1242,7 @@ impl<'a, 'policy> Writer<'a, 'policy> {
                     .and_then(|source| source.copy.as_ref())
                     .and_then(|copy| copy.table.clone());
                 self.push_hyperlink_line(line);
+                self.current_line_is_rich_block = true;
                 self.copy_line.table = table;
                 self.flush_current_line();
             }
@@ -1221,6 +1251,7 @@ impl<'a, 'policy> Writer<'a, 'policy> {
         self.pending_marker_line = false;
         for spillover_line in spillover_lines {
             self.push_hyperlink_line(spillover_line);
+            self.current_line_is_rich_block = true;
             self.flush_current_line();
         }
         self.needs_newline = true;
@@ -2314,18 +2345,44 @@ impl<'a, 'policy> Writer<'a, 'policy> {
             let style = self.current_line_style;
             let mut source = crate::terminal_hyperlinks::LogicalLineSource::from_line(&line.line);
             source.copy = Some(std::sync::Arc::new(std::mem::take(&mut self.copy_line)));
+            let prose_width = if self.current_line_in_code_block
+                || self.current_line_is_rich_block
+                || source.text.trim().is_empty()
+            {
+                None
+            } else {
+                self.max_prose_width
+            };
+            source.max_prose_width = prose_width;
+            let wrap_width = match (self.wrap_width, prose_width) {
+                (Some(available), Some(limit)) => Some(available.min(limit)),
+                (available, None) => available,
+                (None, limit) => limit,
+            };
             // NB we don't wrap code in code blocks, in order to preserve whitespace for copy/paste.
             if !self.current_line_in_code_block
-                && let Some(width) = self.wrap_width
+                && let Some(width) = wrap_width
             {
+                source.continuation_indent = self.current_subsequent_indent.clone().into();
+                if prose_width.is_some() {
+                    source.wrap_policy = crate::terminal_hyperlinks::LineWrapPolicy::UrlAware;
+                }
                 line.source = Some(source);
                 let opts = RtOptions::new(width)
                     .initial_indent(self.current_initial_indent.clone().into())
                     .subsequent_indent(self.current_subsequent_indent.clone().into());
-                for wrapped in crate::terminal_hyperlinks::adaptive_wrap_hyperlink_lines(
-                    std::slice::from_ref(&line),
-                    opts,
-                ) {
+                let wrapped = if prose_width.is_some() {
+                    crate::terminal_hyperlinks::remap_source_wrapped_line(
+                        &line,
+                        crate::wrapping::adaptive_wrap_line_to_width(&line.line, opts),
+                    )
+                } else {
+                    crate::terminal_hyperlinks::adaptive_wrap_hyperlink_lines(
+                        std::slice::from_ref(&line),
+                        opts,
+                    )
+                };
+                for wrapped in wrapped {
                     self.push_output_line(wrapped.style(style));
                 }
             } else {
@@ -2422,6 +2479,7 @@ impl<'a, 'policy> Writer<'a, 'policy> {
             .push(line.spans.iter().map(|span| span.content.len()).sum(), &[]);
         self.current_line_content = Some(HyperlinkLine::new(line));
         self.current_line_in_code_block = self.in_code_block;
+        self.current_line_is_rich_block = self.in_display_math;
         self.line_ends_with_local_link_target = false;
 
         self.pending_marker_line = false;

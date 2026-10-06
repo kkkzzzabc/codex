@@ -4,7 +4,7 @@
 //! Rich prose withholds unfinished link destinations and follow-up directives until closure.
 //! Cropped previews skip completed directives atomically so their prompt text stays hidden.
 
-use super::render::render_source;
+use super::render::render_source_with_list_spacing;
 use crate::history_cell::HistoryRenderMode;
 use crate::inline_visualization::InlineVisualizationContext;
 use crate::terminal_hyperlinks::HyperlinkLine;
@@ -25,6 +25,7 @@ pub(super) enum PreviewMode {
 #[derive(Default)]
 pub(super) struct ProsePreview {
     pub(super) lines: Vec<HyperlinkLine>,
+    pub(super) max_prose_width: Option<usize>,
     scanned_len: usize,
     safe_len: usize,
     rich_safe_len: usize,
@@ -102,12 +103,14 @@ impl ProsePreview {
             start = range.end;
         }
         let mut lines = match mode {
-            PreviewMode::Prose(render_mode) => render_source(
+            PreviewMode::Prose(render_mode) => render_source_with_list_spacing(
                 &source[start..],
                 width,
                 cwd,
                 render_mode,
                 inline_visualization_context,
+                crate::markdown_render::ListSpacing::AfterMultiline,
+                self.max_prose_width,
             ),
             PreviewMode::Math => textwrap::wrap(&source[start..], width.unwrap_or(usize::MAX))
                 .into_iter()

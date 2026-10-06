@@ -22,6 +22,9 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(/*secs*/ 30);
 const FOCUS_INPUT_TIMEOUT: Duration = Duration::from_secs(/*secs*/ 5);
 const FOCUS_PROBE_INPUT: &str = "focus-palette-24527";
 
+#[path = "max_prose_width.rs"]
+mod max_prose_width;
+
 #[path = "external_editor_tests.rs"]
 mod external_editor;
 #[path = "tui_mode_picker_tests.rs"]

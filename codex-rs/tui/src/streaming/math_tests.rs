@@ -15,6 +15,7 @@ fn unicode_math_aligned_stream_matches_complete_render() {
                 &cwd,
                 mode,
                 /*inline_visualization_context*/ None,
+                None,
             );
             let mut emitted = Vec::new();
             for ch in source.chars() {
@@ -48,6 +49,7 @@ fn unicode_math_stream_holds_display_until_closed_and_preserves_source() {
                 &cwd,
                 mode,
                 /*inline_visualization_context*/ None,
+                None,
             );
             let mut emitted = Vec::new();
             let mut source = String::new();
@@ -103,6 +105,7 @@ fn unicode_math_raw_preview_preserves_line_on_newline() {
             &cwd,
             HistoryRenderMode::Raw,
             /*inline_visualization_context*/ None,
+            None,
         );
         let source = format!("{open}\\frac{{abcdefghijk}}{{lmnop}}");
         stream.push_delta(&source);
@@ -128,6 +131,7 @@ fn unicode_math_unfinished_display_is_visible_and_reflows() {
             &cwd,
             HistoryRenderMode::Rich,
             /*inline_visualization_context*/ None,
+            None,
         );
         for (chunk, expected) in [(&open[..1], &open[..1]), (&open[1..], open)] {
             stream.push_delta(chunk);
@@ -203,6 +207,7 @@ fn unicode_math_rejected_display_keeps_its_closer_and_following_text() {
                     Some(40),
                     Some(&cwd),
                     crate::markdown_render::ListSpacing::AfterMultiline,
+                    crate::markdown_render::prose_width::current(),
                 );
                 assert_eq!(
                     (&render.lines, render.pending_math_start),

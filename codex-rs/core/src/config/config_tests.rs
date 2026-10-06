@@ -1261,6 +1261,7 @@ fn config_toml_deserializes_model_availability_nux() {
             screen_reader_detection_done: None,
             effects: Default::default(),
             rendering: Default::default(),
+            max_prose_width: None,
             show_tooltips: true,
             show_server_version_notice: true,
             auto_recap: true,
@@ -4404,6 +4405,7 @@ fn tui_config_missing_notifications_field_defaults_to_enabled() {
             screen_reader_detection_done: None,
             effects: Default::default(),
             rendering: Default::default(),
+            max_prose_width: None,
             show_tooltips: true,
             show_server_version_notice: true,
             auto_recap: true,
@@ -13461,5 +13463,25 @@ fn sqlite_home_env_conflict_reports_an_override() -> std::io::Result<()> {
     );
     assert!(warnings.is_empty());
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn max_prose_width_loads_from_tui_config() -> std::io::Result<()> {
+    for (toml, expected) in [
+        ("", None),
+        ("[tui]\nmax_prose_width = 40\n", Some(40)),
+        ("[tui]\nmax_prose_width = 80\n", Some(80)),
+    ] {
+        let cfg: ConfigToml = toml::from_str(toml).expect("valid prose width configuration");
+        let codex_home = TempDir::new()?;
+        let config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides::default(),
+            codex_home.abs(),
+        )
+        .await?;
+        assert_eq!(config.tui_max_prose_width, expected);
+    }
     Ok(())
 }

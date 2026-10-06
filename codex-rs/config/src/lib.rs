@@ -46,6 +46,7 @@ mod thread_config;
 mod tui_effects;
 mod tui_keymap;
 mod tui_mouse_scroll;
+mod tui_prose_width;
 mod tui_rendering;
 pub mod types;
 

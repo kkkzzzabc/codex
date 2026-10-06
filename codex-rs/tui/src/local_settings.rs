@@ -60,6 +60,7 @@ impl LocalSettings {
                 screen_reader_detection_done: None,
                 effects: config.tui_effects,
                 rendering: config.tui_rendering,
+                max_prose_width: config.tui_max_prose_width,
                 show_tooltips: config.show_tooltips,
                 show_server_version_notice: config.tui_show_server_version_notice,
                 auto_recap: config.tui_auto_recap,

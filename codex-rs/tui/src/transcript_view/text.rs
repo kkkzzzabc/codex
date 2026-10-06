@@ -460,7 +460,13 @@ impl TextLayout {
 }
 
 fn layout_line(logical: &LogicalLine, text_start: usize, width: u16) -> Vec<TextRow> {
-    let content_width = width.saturating_sub(logical.right_reserve).max(/*other*/ 1);
+    let available = usize::from(width.saturating_sub(logical.right_reserve));
+    let content_width = logical
+        .origin
+        .max_prose_width
+        .map(|limit| available.min(limit.saturating_add(logical.origin.prose_outer_prefix_width)))
+        .unwrap_or(available)
+        .max(1) as u16;
     let mut logical = Cow::Borrowed(logical);
     if line_width(&logical.initial_indent) >= usize::from(content_width)
         || line_width(&logical.subsequent_indent) >= usize::from(content_width)

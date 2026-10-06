@@ -361,10 +361,12 @@ impl ReasoningSummaryCell {
     }
 
     fn lines(&self, width: u16) -> Vec<HyperlinkLine> {
-        let lines = crate::markdown_render::render_markdown_lines_with_width_and_cwd(
+        let lines = crate::markdown_render::render_markdown_lines_with_prose_width(
             &self.content,
             crate::width::usable_content_width_u16(width, /*reserved_cols*/ 2),
             Some(self.cwd.as_path()),
+            &|_| false,
+            crate::markdown_render::prose_width::current(),
         );
         let summary_style = Style::default().dim().italic();
         let summary_lines = lines
@@ -383,12 +385,37 @@ impl ReasoningSummaryCell {
             })
             .collect::<Vec<_>>();
 
-        crate::terminal_hyperlinks::adaptive_wrap_hyperlink_lines(
-            &summary_lines,
-            RtOptions::new(width as usize)
-                .initial_indent("• ".dim().into())
-                .subsequent_indent("  ".into()),
-        )
+        if crate::markdown_render::prose_width::current().is_none() {
+            return crate::terminal_hyperlinks::adaptive_wrap_hyperlink_lines(
+                &summary_lines,
+                RtOptions::new(width as usize)
+                    .initial_indent("• ".dim().into())
+                    .subsequent_indent("  ".into()),
+            );
+        }
+        let mut output = Vec::new();
+        for (index, line) in summary_lines.into_iter().enumerate() {
+            let prefix = if index == 0 {
+                "• ".dim()
+            } else {
+                "  ".into()
+            };
+            if line
+                .source
+                .as_ref()
+                .is_some_and(|source| source.max_prose_width.is_some())
+            {
+                output.extend(prefix_hyperlink_lines(vec![line], prefix, "  ".into()));
+            } else {
+                output.extend(crate::terminal_hyperlinks::adaptive_wrap_hyperlink_lines(
+                    &[line],
+                    RtOptions::new(width as usize)
+                        .initial_indent(prefix.into())
+                        .subsequent_indent("  ".into()),
+                ));
+            }
+        }
+        output
     }
 }
 
@@ -453,6 +480,42 @@ impl HistoryCell for AgentMessageCell {
     fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
         let mut wrapped = Vec::new();
         for (index, line) in self.lines.iter().enumerate() {
+            if line
+                .source
+                .as_ref()
+                .is_some_and(|source| source.max_prose_width.is_some())
+            {
+                // Capped rows already carry Markdown indentation and resize provenance. Add the
+                // assistant gutter outside that cap, without replacing the hanging indent.
+                let prefixed = prefix_hyperlink_lines(
+                    vec![line.clone()],
+                    if index == 0 && self.is_first_line {
+                        "• ".dim()
+                    } else {
+                        "  ".into()
+                    },
+                    "  ".into(),
+                );
+                for prefixed in prefixed {
+                    if prefixed.width() > usize::from(width) {
+                        let indent = prefixed
+                            .source
+                            .as_ref()
+                            .map(|source| source.continuation_indent.clone())
+                            .unwrap_or_default();
+                        wrapped.extend(remap_source_wrapped_line(
+                            &prefixed,
+                            crate::wrapping::adaptive_wrap_line_to_width(
+                                &prefixed.line,
+                                RtOptions::new(usize::from(width).max(1)).subsequent_indent(indent),
+                            ),
+                        ));
+                    } else {
+                        wrapped.push(prefixed);
+                    }
+                }
+                continue;
+            }
             let initial_indent = if index == 0 && self.is_first_line {
                 "• ".dim().into()
             } else {
@@ -604,6 +667,7 @@ impl AgentMarkdownCell {
                 Some(self.cwd.as_path()),
                 self.inline_visualization_context.as_ref(),
                 list_spacing,
+                crate::markdown_render::prose_width::current(),
             );
             let lines = if self.spoken_artifacts {
                 let mut lines = lines;

@@ -136,6 +136,7 @@ pub(crate) fn render_tooltip_lines(tip: &str, width: usize, cwd: &Path) -> Vec<H
         Some(cwd),
         &crate::markdown_render::hide_web_link_destination,
         crate::markdown_render::ListSpacing::AfterMultiline,
+        None,
     )
     .lines
 }

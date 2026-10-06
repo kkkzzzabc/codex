@@ -42,6 +42,7 @@ pub(crate) fn render_streaming_markdown_lines_with_width_and_cwd(
     cwd: Option<&Path>,
     is_hidden_link_destination: &dyn Fn(&str) -> bool,
     list_spacing: ListSpacing,
+    max_prose_width: Option<usize>,
 ) -> StreamingMarkdownRender {
     render_with_copy_sources(
         input,
@@ -50,6 +51,7 @@ pub(crate) fn render_streaming_markdown_lines_with_width_and_cwd(
         is_hidden_link_destination,
         list_spacing,
         Vec::new(),
+        max_prose_width,
     )
 }
 
@@ -60,6 +62,7 @@ pub(crate) fn render_with_copy_sources(
     is_hidden_link_destination: &dyn Fn(&str) -> bool,
     list_spacing: ListSpacing,
     code_sources: Vec<crate::markdown_copy::SourceBlock>,
+    max_prose_width: Option<usize>,
 ) -> StreamingMarkdownRender {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
@@ -86,6 +89,8 @@ pub(crate) fn render_with_copy_sources(
     let mut writer = Writer::new(input, width, cwd, is_hidden_link_destination);
     // Drop the consumed parser before the rendering state, including on unwind.
     let mut parser = parser;
+    writer.max_prose_width = max_prose_width;
+    writer.display_math_ranges = math.display_ranges.clone();
     writer.list_spacing = list_spacing;
     writer.code_sources = code_sources;
     writer.run(&mut parser);

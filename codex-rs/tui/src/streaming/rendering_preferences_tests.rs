@@ -18,6 +18,7 @@ fn empty_list_item_stays_mutable_until_finalization() {
             &cwd,
             HistoryRenderMode::Rich,
             /*inline_visualization_context*/ None,
+            None,
         );
         stream.push_delta(marker);
         let mut emitted = stream.tick_batch(usize::MAX);
@@ -46,6 +47,7 @@ fn resizing_does_not_drop_held_list_marker() {
         &cwd,
         HistoryRenderMode::Rich,
         /*inline_visualization_context*/ None,
+        None,
     );
     stream.push_delta("Long prose with enough words to wrap.\n\n");
     assert!(stream.tick_batch(usize::MAX).len() > 1);
@@ -77,6 +79,7 @@ fn lists_match_incremental_and_emitted_responses() {
             &cwd,
             HistoryRenderMode::Rich,
             /*inline_visualization_context*/ None,
+            None,
         );
         let render = |source: &str| {
             render_source(
@@ -148,6 +151,7 @@ fn rendering_preferences_match_incremental_final_and_emitted_responses() {
                     &cwd,
                     HistoryRenderMode::Rich,
                     /*inline_visualization_context*/ None,
+                    None,
                 );
                 let render = |source: &str| {
                     render_source(
