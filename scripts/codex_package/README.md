@@ -4,6 +4,12 @@ This package contains the implementation behind `scripts/build_codex_package.py`
 The top-level script is the stable executable entry point; these modules keep the
 package-building logic split by responsibility.
 
+For this personal fork's minimal macOS arm64 build, use
+[`build-personal-package.sh`](../build-personal-package.sh). It calls this builder
+with an isolated environment, `dev-small`, two build jobs, incremental compilation
+disabled, and locked Cargo dependencies. Preparation, dry runs, and measured disk
+usage are documented in [fork maintenance](../../docs/fork-maintenance.md).
+
 Run the builder through `just`:
 
 ```bash
