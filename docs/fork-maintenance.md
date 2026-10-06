@@ -436,3 +436,32 @@ Rust 구현은 최초 빌드 이후 변경하지 않았으며, 개인용 버전�
 실패한 최초 스냅샷 검사와 toolchain 선택 오류 로그도 보존합니다.
 모델 인증 정보는 로그에 출력하지 않았습니다. 화면·복사·링크 검증은 PTY와 자동 회귀 검사이며
 실제 Ghostty GUI·직접 클립보드 조작을 검증한 것은 아닙니다.
+
+
+#### 상시 설치·전환 완료
+
+| 항목 | 결과 |
+| --- | --- |
+| 최종 패키지 소스 SHA | `671c99e909c150bbdaf470e33677a44f74f952ad` |
+| 정상 동작 태그 | `custom-good-20261007-01` (최종 패키지 소스 SHA를 고정) |
+| 설치 패키지 | `~/.local/opt/codex-personal/releases/0.160.1+personal.1-671c99e909/` |
+| 선택 링크 | `current -> releases/0.160.1+personal.1-671c99e909` |
+| 설치 기록·체크섬 | 패키지의 `personal-install.json`, `SHA256SUMS`. 6개 파일 모두 설치 후 체크섬 일치 |
+| 최종 패키지 재구성 | 최종 소스에서 개인용 래퍼 재실행 성공. 검증한 최초 패키지의 5개 파일과 SHA256이 모두 동일 |
+| 기존 계정·세션 | `codex-custom`에서 기존 `~/.codex` 계정 요청 성공. 전환 전 저장한 세션을 같은 UUID로 재개하고 기대 응답·턴 완료 확인 |
+| 설치 후 보조 실행 파일 | `codex-custom` 로컬 모의 응답에서 설치 경로의 code mode host·패키지 `rg` 실행 확인 |
+| 기본 명령 | `~/.local/bin/codex -> codex-custom`, 일반/대화형 새 로그인 셸 모두 개인용 버전 선택 |
+| 공식 명령 | `codex-official`은 `/opt/homebrew/bin/codex`의 `0.160.1` 선택 |
+| 사용자 설정 | `[tui].max_prose_width = 80`. 나머지 TOML 설정의 파싱 결과 동일 |
+| dotfiles 관리·실제 적용 | `workspace/tools/environment/dotfiles/zsh/.zprofile`에서 Homebrew 초기화 뒤 `~/.local/bin` 우선. 기존 `~/.zprofile` 링크 유지, README에도 명령 구분 기록 |
+| 보존 사항 | `main`, `codex/custom`, 기존 기능 브랜치·패키지, Homebrew 공식본 보존. 현재 세션과 기존 공유 데몬 PID 유지 |
+
+원본 `.zprofile`, dotfiles README, 전환 직전 설정은 같은 백업 폴더의
+`zprofile.original`, `dotfiles-README.original`, `config-before-switch.toml`에도 보관했습니다.
+최종 확인 근거는 `logs/stable-final-package-equality.json`, `stable-install-result.json`,
+`stable-wrapper-resume.json`, `stable-helper-installed.json`, `stable-final-verification.json`,
+`stable-login-shell.log`, `stable-interactive-login-shell.log`입니다.
+
+설치 검증 대상은 위 소스 SHA입니다. 이 설치 완료 기록은 그 이후의 문서 커밋이며,
+실행 파일을 다시 변경한 커밋으로 간주하지 않습니다.
+이 브랜치와 개별 정상 태그를 포크 `kkkzzzabc/codex`에 보관합니다.
