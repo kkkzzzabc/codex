@@ -3,6 +3,17 @@
 이 포크는 업스트림을 유지하면서 개인용 커스텀을 개발하고 사용하는 것을 목적으로 합니다.
 공개 배포, 다중 버전 지원, 자동 업스트림 반영은 초기 운영 범위에 포함하지 않습니다.
 
+## 현재 운영 상태
+
+최신 개인용 소스의 유일한 통합 브랜치는 `codex/custom`이며 기본 작업 폴더도 이 브랜치를 사용합니다.
+공식 `0.160.1` 기반 개인용 버전 `0.160.1+personal.1`의 모델 요청·본문 폭 검증,
+상시 설치·기본 `codex` 명령 전환은 2026-10-07에 완료했습니다.
+버전 수정은 `3d63fa2184`, 검증·설치 소스는 `671c99e909`, 설치 완료 기록은 `9e6691b9b7`입니다.
+상세 결과는 [개인용 이전 기록](#2026-10-07-공식-01601-기준의-개인용-이전)에 있습니다.
+이번 [브랜치 통합](#2026-10-07-개인용-브랜치-통합)은 이력과 문서만 정리합니다.
+과거 미완료·다음 작업 표현은 당시 상태이며, 설치된 실행 파일과 Git 체크아웃은 별개입니다.
+다음 작업은 좌우 여백의 적용 범위 결정입니다.
+
 ## 원격과 브랜치
 
 | 이름 | 역할 | 원칙 |
@@ -10,12 +21,13 @@
 | `upstream` | `https://github.com/openai/codex.git` | 업스트림 조회와 가져오기에 사용합니다. |
 | `origin` | `https://github.com/kkkzzzabc/codex.git` | 개인용 변경과 복귀 지점을 보관합니다. |
 | `main` | 업스트림 원본 보관 | 커스텀을 커밋하지 않고 fast-forward로만 동기화합니다. |
-| `codex/custom` | 개인용 커스텀 통합 | 장기 유지하며 업스트림을 merge합니다. |
-| `codex/feat/stable-personal` | 공식 릴리스 기반 상시 사용 소스 | `rust-v0.160.1`에서 필요한 커스텀만 이전합니다. |
-| `codex/feat/<기능>` | 규모 있는 변경이나 실험 | `codex/custom`에서 생성하고 통합 후 삭제합니다. |
-| `codex/sync/YYYYMMDD` | 업스트림 업데이트 검증 | `codex/custom`에서 생성하고 검증·통합 후 삭제합니다. |
+| `codex/custom` | 공식 릴리스 기반 개인용 통합 | 최신 개인용 소스의 유일한 통합 브랜치이며 기본 작업 폴더에서 사용합니다. |
+| `codex/feat/stable-personal` | 검증·설치 완료 이력 | 공식 `0.160.1` 기반 이전·검증·설치 기록을 보존합니다. |
+| `codex/feat/max-prose-width` | 최초 구현 이력 | 개발 버전 기반 본문 폭 구현 기록을 보존합니다. |
+| `codex/feat/<기능>` | 규모 있는 변경이나 실험 | `codex/custom`에서 생성합니다. 기존 이력 브랜치는 보존하고 새 임시 브랜치는 통합 후 정리합니다. |
+| `codex/sync/YYYYMMDD` | 공식 릴리스 업데이트 검증 | 선택한 릴리스에서 생성하고 커스텀 이전·검증·통합 후 정리합니다. |
 
-기본 브랜치는 `main`으로 유지합니다. 작은 변경은 `codex/custom`에 직접 커밋할 수 있습니다.
+GitHub 기본 브랜치는 `main`으로 유지합니다. 로컬 기본 작업 폴더의 체크아웃은 `codex/custom`입니다. 작은 변경은 `codex/custom`에 직접 커밋할 수 있습니다.
 PR은 필수가 아니며, 만들 경우 포크 저장소와 대상 브랜치 `codex/custom`을 명시합니다.
 공유한 장기 브랜치는 rebase하거나 강제 push하지 않습니다.
 동기화 병합 이력은 보존하며 squash하지 않습니다.
@@ -46,42 +58,29 @@ PR은 필수가 아니며, 만들 경우 포크 저장소와 대상 브랜치 `c
 
 ## 업스트림 반영
 
-필요한 기능이나 버그 수정이 있을 때, 또는 정기 검토 시 업스트림 반영 여부를 판단합니다.
-`main` 동기화와 실제 사용하는 커스텀 버전 업데이트는 별도로 진행합니다.
-업스트림 `main` 또는 정식 릴리스 태그 중 반영할 지점을 선택하고 정확한 SHA를 기록합니다.
+필요한 기능이나 버그 수정이 있을 때 공식 릴리스 업데이트 여부를 판단합니다.
+`main`의 업스트림 동기화와 개인용 버전 업데이트는 별도로 진행합니다.
+개발 중인 `main` 전체를 개인용 소스에 일반 병합하지 않습니다.
 
-1. 미커밋 변경이 없는지 확인합니다. 작업 중인 변경이 있으면 먼저 정리합니다.
-2. 정상 동작이 확인된 커스텀 커밋에 `custom-good-YYYYMMDD-01` 같은 고유 태그를 남깁니다.
-   태그는 재사용하거나 이동하지 않습니다. 현재 사용하는 실행 파일도 별도로 보관합니다.
-3. 업스트림을 가져오고 `main`을 fast-forward로 동기화합니다. 분기된 이력이 있으면 원인을 확인합니다.
-4. `codex/custom`에서 동기화 브랜치를 생성하고 선택한 업스트림 SHA를 merge합니다.
-5. 충돌은 커스텀 요구사항과 업스트림 변경 의도를 함께 확인하여 해결합니다.
-6. 검증에 통과하면 동기화 브랜치를 `codex/custom`으로 fast-forward 통합합니다.
-   검증 중 `codex/custom`이 변경됐다면 최신 커스텀을 동기화 브랜치에 합친 뒤 다시 검증합니다.
-7. 기준 SHA와 검증 결과를 이 문서에 기록하고, 브랜치와 복귀용 태그를 `origin`에 보관합니다.
-8. 통합·원격 보관이 끝난 임시 브랜치를 삭제합니다.
+1. 브랜치·워크트리·원격과 미커밋 변경을 확인하고 작업 중인 변경을 보존합니다.
+2. 현재 정상 패키지와 이동하지 않는 정상 태그를 보존합니다. 태그는 재사용하거나 이동하지 않습니다.
+3. 선택한 공식 릴리스 태그를 개별적으로 가져오고 태그 객체·소스 SHA를 기록합니다.
+4. 선택한 릴리스에서 `codex/sync/YYYYMMDD`를 만들고 `codex/custom`의 필요한 커스텀만 이전합니다.
+   충돌은 커스텀 요구사항과 릴리스 API를 확인하여 해결합니다.
+5. 개인용 버전 정합성·모델 목록과 실제 요청·본문 폭 회귀를 검증합니다.
+6. 검증한 릴리스 기반 파일을 유지하며 이전 `codex/custom`의 이력을 연결하는 통합을 수행합니다.
+   내용 병합과 이력 연결을 구분하고, 통합 전후 파일 동일성을 검사합니다.
+   이전 단계에서 필요한 커스텀이 모두 반영된 것을 확인한 경우에만 `ours` 전략을 사용합니다.
+7. `codex/custom`을 fast-forward하고 기준 SHA·검증 결과를 기록합니다.
+   작업 중 통합 브랜치가 변경됐다면 새 변경을 조사·반영하고 다시 검증합니다.
+8. 포크 `kkkzzzabc/codex`의 `codex/custom`과 개별 정상 태그를 일반 push로 보관합니다.
+   원격 상태가 예상과 다르면 강제 push 없이 중단·조사합니다. 보관 완료 후 새 임시 브랜치만 정리합니다.
 
-아래 명령은 저장소 루트에서 단계별로 실행하는 예시입니다. SHA와 브랜치 이름은 실제 값으로 바꿉니다.
+`main`은 `git fetch --no-tags upstream refs/heads/main:refs/remotes/upstream/main`으로 조회한 뒤,
+해당 브랜치에서 `git merge --ff-only upstream/main`으로 동기화합니다.
+다른 워크트리에서 사용 중인 브랜치를 강제 체크아웃하지 않습니다.
 충돌이나 오류가 발생하면 다음 단계로 진행하지 않습니다.
 
-```bash
-git status --short --branch
-git fetch --no-tags upstream refs/heads/main:refs/remotes/upstream/main
-git switch main
-git merge --ff-only upstream/main
-git push origin main
-
-git switch codex/custom
-git switch -c codex/sync/YYYYMMDD
-git merge --no-ff <selected-upstream-sha> -m "chore: Merge upstream updates"
-
-# 충돌 해결과 검증을 완료한 뒤 실행합니다.
-git switch codex/custom
-git merge --ff-only codex/sync/YYYYMMDD
-git push origin codex/custom
-```
-
-정식 릴리스 태그를 선택할 때는 해당 태그를 별도로 가져옵니다.
 정상 버전 태그는 `git push origin <tag>`로 개별 보관합니다.
 업스트림 태그를 일괄 push하지 않습니다. 기존 배포 자동화는 `rust-v*.*.*` 태그에 반응할 수 있습니다.
 
@@ -101,7 +100,7 @@ git push origin codex/custom
 
 공식 설치본과 커스텀 설치본은 실행 경로 또는 실행 명령을 구분합니다.
 공식 자동 업데이트가 커스텀 실행 파일을 덮어쓰지 않도록 별도 위치를 사용합니다.
-초기에는 로컬 빌드만 사용하며 별도 패키지 배포나 서명 체계를 도입하지 않습니다.
+개인용 로컬 패키지 설치와 복귀는 [설치 완료 기록](#상시-설치전환-완료)에 따릅니다. 별도 패키지 배포나 서명 체계는 도입하지 않습니다.
 
 업데이트 검증이 실패하면 통합을 보류하고 기존 정상 실행 파일을 계속 사용합니다.
 복귀 태그에서 소스를 다시 빌드할 경우 현재 커스텀 브랜치를 reset하지 않고 별도 작업 공간을 사용합니다.
@@ -220,7 +219,7 @@ V8는 사전 빌드 파일을 사용하고 CLI와 필수 `codex-code-mode-host`�
 패키지 체크섬·구성 검증과 실행 권한, arm64 Mach-O 형식을 확인했습니다.
 저장소·잠금 파일·기존 셸·Git 설정은 유지되었습니다.
 테스트, 실제 CLI 실행, release 빌드, 실사용 설치는 수행하지 않았습니다.
-따라서 정상 동작 태그는 아직 부여하지 않습니다.
+이 실측 당시에는 정상 동작 태그를 부여하지 않았습니다. 후속 검증·태그·설치는 [2026-10-07 기록](#2026-10-07-공식-01601-기준의-개인용-이전)에 있습니다.
 
 원본 자료는 `$HOME/.cache/codex-min-build/20261006-171955/`의
 `report.txt`, `status.json`, `logs/build_package.log`에 있습니다.
@@ -313,7 +312,7 @@ prose_codex="$HOME/.cache/codex-min-build/20261006-171955/packages/max-prose-wid
 
 ### 2026-10-06 개인용 패키지 모델 오류 조사
 
-본문 폭 기능의 구현·검증은 완료했으나, 개인용 패키지의 빌드 버전 수정은 미완료입니다. 사용자는 다음 작업에서 버전 수정을 함께 진행하도록 지정했습니다. 이번 조사와 문서 정리에서는 코드·설정 수정, 재빌드·설치·커밋·배포를 수행하지 않았습니다.
+2026-10-06 조사 당시에는 본문 폭 구현·검증은 완료했고 개인용 빌드 버전 수정은 미완료였습니다. 후속 버전 수정·모델 요청 검증·설치는 [2026-10-07 기록](#2026-10-07-공식-01601-기준의-개인용-이전)에서 완료했습니다. 사용자는 다음 작업에서 버전 수정을 함께 진행하도록 지정했습니다. 이번 조사와 문서 정리에서는 코드·설정 수정, 재빌드·설치·커밋·배포를 수행하지 않았습니다.
 
 사용자 확인 중 `gpt-6.1-sol` 요청이 실패했습니다. 2026-10-06 20:09:19 KST의 로컬 로그에는 서버가 반환한 다음 오류가 있습니다.
 
@@ -321,7 +320,7 @@ prose_codex="$HOME/.cache/codex-min-build/20261006-171955/packages/max-prose-wid
 The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account.
 ```
 
-확인한 원인은 새 패키지의 `0.0.0` 버전에 따른 모델 목록 차이입니다. 소스의 `codex-rs/Cargo.toml`은 workspace 버전이 `0.0.0`이며, 개인용 빌드 래퍼는 이를 변경하지 않습니다. `models-manager/src/lib.rs`는 Cargo 패키지 버전을 모델 목록 조회의 `client_version`으로 사용합니다. 공식 설치본은 `/opt/homebrew/bin/codex`가 가리키는 `0.160.1`입니다.
+확인한 원인은 새 패키지의 `0.0.0` 버전에 따른 모델 목록 차이입니다. 당시 개발 소스의 `codex-rs/Cargo.toml`은 workspace 버전이 `0.0.0`이었으며, 개인용 빌드 래퍼는 이를 변경하지 않습니다. `models-manager/src/lib.rs`는 Cargo 패키지 버전을 모델 목록 조회의 `client_version`으로 사용합니다. 공식 설치본은 `/opt/homebrew/bin/codex`가 가리키는 `0.160.1`입니다.
 
 사용자 승인 후 같은 계정·인증·헤더를 유지하고 `GET /backend-api/codex/models`의 `client_version`만 바꿨습니다. User-Agent는 `codex_cli_rs/0.160.1`로 고정했습니다. 모델 생성 요청은 하지 않았으며 인증 정보는 출력하거나 기록하지 않았습니다.
 
@@ -333,9 +332,9 @@ The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account
 
 서버가 반환한 해당 모델의 `minimal_client_version`은 `0.153.0`, `tool_mode`는 `code_mode_only`, `use_responses_lite`는 `true`입니다. 비교 조회는 2026-10-06 22:17 KST에 완료했습니다. 근거는 `$HOME/.cache/codex-min-build/20261006-171955/logs/prose-model-version-comparison.json`에 있습니다. 이 파일에는 조회 조건·모델 목록·대상 모델의 메타데이터만 기록했습니다.
 
-기존 실패 로그의 `Unknown model gpt-6.1-sol` 경고도 확인했습니다. 소스에서는 조회 목록에 없는 모델에 대체 메타데이터를 사용하며, 이때 `use_responses_lite`는 `false`입니다. 따라서 버전으로 인한 모델 정보 누락이 요청 방식에도 영향을 줍니다. 목록 차이는 버전만 바꾼 조회로 확인했으며, 수정한 패키지에서 생성 요청이 성공하는지는 아직 확인하지 않았습니다. 서버 내부의 거부 조건 전체를 확인한 것은 아닙니다.
+기존 실패 로그의 `Unknown model gpt-6.1-sol` 경고도 확인했습니다. 소스에서는 조회 목록에 없는 모델에 대체 메타데이터를 사용하며, 이때 `use_responses_lite`는 `false`입니다. 따라서 버전으로 인한 모델 정보 누락이 요청 방식에도 영향을 줍니다. 목록 차이는 버전만 바꾼 조회로 확인했으며, 이 조사 시점에는 수정한 패키지의 생성 요청 성공을 확인하지 않았습니다. 후속 실제 요청 검증은 2026-10-07 기록에 있습니다. 서버 내부의 거부 조건 전체를 확인한 것은 아닙니다.
 
-다음 작업의 범위와 완료 기준은 다음과 같습니다.
+당시 정한 후속 작업의 범위와 완료 기준은 다음과 같습니다.
 
 - 소스 기준에 맞는 개인용 빌드 버전과 부여 방식을 정하고, 모델 목록·요청에 전달되는 버전 및 패키지 표시를 일치시킵니다.
 - 표시 기능과 구분하여 관련 빌드 파일·운영 기록을 수정합니다. 본문 폭 구현과 기존 패키지를 보존합니다.
@@ -346,8 +345,8 @@ The 'gpt-6.1-sol' model is not supported when using Codex with a ChatGPT account
 ### 2026-10-07 공식 0.160.1 기준의 개인용 이전
 
 
-상시 사용 소스는 공식 `rust-v0.160.1`의 `d27764b82f7118f674371e6d6e76271d9d606edb`에서
-생성한 `codex/feat/stable-personal`입니다. 태그 객체 SHA는
+이전 당시 상시 사용 소스는 공식 `rust-v0.160.1`의 `d27764b82f7118f674371e6d6e76271d9d606edb`에서
+생성한 `codex/feat/stable-personal`이었습니다. 이후 개인용 소스는 `codex/custom`으로 통합했습니다. 태그 객체 SHA는
 `c3e23d4c4385619ecec78408766e46b7fa7dd9ad`이며 소스 SHA와 구분합니다.
 기존 `main`, `codex/custom`, 기존 패키지는 보존합니다.
 본문 폭과 운영·빌드 도구만 이전하고 개발 브랜치의 나머지 업스트림 변경은 가져오지 않습니다.
@@ -383,7 +382,7 @@ Homebrew 초기화 뒤에 `~/.local/bin`을 PATH 앞에 놓습니다.
 #### 업데이트와 복귀
 
 현재 정상 패키지와 직전 정상 패키지는 유지합니다. 최초 복귀 수단은 공식 Homebrew 패키지입니다.
-이후에는 선택한 공식 릴리스에서 별도 브랜치를 만들고 커스텀만 이전합니다.
+이후에는 [업스트림 반영](#업스트림-반영)에 따라 선택한 공식 릴리스에서 별도 브랜치를 만들고 `codex/custom`의 커스텀만 이전·검증한 뒤 통합합니다.
 동일한 모델·요청·본문 폭 검증에 통과한 뒤에만 `current`를 교체합니다.
 정상 소스에는 이동하지 않는 `custom-good-YYYYMMDD-01` 태그를 만들고,
 포크 `kkkzzzabc/codex`에 해당 브랜치와 개별 태그를 보관합니다.
@@ -465,3 +464,37 @@ Rust 구현은 최초 빌드 이후 변경하지 않았으며, 개인용 버전�
 설치 검증 대상은 위 소스 SHA입니다. 이 설치 완료 기록은 그 이후의 문서 커밋이며,
 실행 파일을 다시 변경한 커밋으로 간주하지 않습니다.
 이 브랜치와 개별 정상 태그를 포크 `kkkzzzabc/codex`에 보관합니다.
+
+
+### 2026-10-07 개인용 브랜치 통합
+
+최초 구현과 공식 릴리스 기반 검증·설치가 다른 브랜치에 남아 작업 완료 여부와 후속 개발 기준이
+혼동될 수 있어, `codex/custom`을 최신 개인용 소스의 유일한 통합 브랜치로 정리했습니다.
+앞서 미커밋 문서에 작성한 `stable-personal` 상시 개발 지침은 이 기준으로 대체했습니다.
+
+| 항목 | 결과 |
+| --- | --- |
+| 통합 전 `codex/custom` | `b28036cad20f8e13c594cb8d30f53509455f0c37` |
+| 최초 구현 이력 | `codex/feat/max-prose-width`: `75afc5d020` |
+| 유지한 릴리스 기반 파일 | `codex/feat/stable-personal`: `9e6691b9b72a92a73db0aea7989c2d4e73129efd` |
+| 통합 커밋 | `410f7105d98ff07bc9d61789a7b5f259886df52e` — `chore: Consolidate personal development history` |
+| 통합 방식 | `stable-personal`에서 임시 브랜치를 만든 뒤 `max-prose-width`를 `git merge --no-ff -s ours`로 병합. 내용 병합 없이 이전 이력만 연결 |
+| 문서 수정 전 파일 동일성 | 두 전체 트리 SHA가 `608080e4cae686802533f0e474a92a8a276a4e09`로 동일 |
+| 최종 문서 커밋 | `docs: Align branch guidance and record consolidation`. 자신의 SHA는 문서에 고정할 수 없으므로 `git log -1 codex/custom`과 원격 ref에서 확인 |
+| 최종 변경 범위 | `stable-personal` 대비 `AGENTS.md`, 이 문서, `docs/display-plans/README.md`만 변경. 나머지 소스·잠금 파일·스키마·빌드 도구 동일 |
+| 이력·태그 | 기존 세 브랜치의 커밋을 최종 이력에 포함. `custom-good-20261007-01`의 태그 객체 `4a19b73c936246cdb753f39c2a4e4144604b4f53`와 대상 `671c99e909c150bbdaf470e33677a44f74f952ad` 유지 |
+| 기본 작업 폴더 | `/Users/kkkzzzabc/workspace/projects/forks/codex`를 `codex/custom`으로 전환하고 최종 문서 커밋까지 fast-forward |
+| 기존 워크트리 | `stable-personal`과 detached `prose-baseline` 워크트리·기존 기능 브랜치 보존. 기본·stable 두 워크트리의 미커밋 변경 정리 |
+| 원격 보관 확인 | 포크 `kkkzzzabc/codex`의 `codex/custom`에 일반 push로 보관. 원격 SHA·`origin/codex/custom`·로컬 최종 문서 커밋 일치와 추적 관계 유지. 실제 SHA는 아래 검사 결과 파일에 기록 |
+
+두 워크트리의 미커밋 문서는 저장소 밖
+`~/.local/share/codex-personal/branch-consolidation/20261007-004902/`에
+워크트리별 `changes.patch`, 파일 사본, 변경 전 HEAD와 ref 목록으로 보존했습니다.
+최종 전환·원격 보관의 실제 SHA와 검사 결과는 같은 폴더의 `final-verification.json`에 기록합니다.
+이번에 만든 임시 브랜치만 원격 보관 후 정리합니다.
+
+문서의 브랜치 역할·과거 완료 상태·커밋 참조·내부 링크를 검토했고 `git diff --check`를 통과했습니다.
+설치 소스는 계속 `671c99e909`이며 이번 통합·문서 커밋을 새 실행 검증 대상으로 표현하지 않습니다.
+소스 동일성을 확인하므로 재빌드·테스트·모델 요청·재설치는 수행하지 않습니다.
+설치 패키지·실행 명령 연결·사용자 설정·세션 데이터·캐시는 변경하지 않습니다.
+다음 작업은 [좌우 여백의 적용 범위 결정](display-plans/02-horizontal-margins.md)입니다.
