@@ -97,6 +97,7 @@ build_env=(
   "PATH=$rustup_dir:$PATH"
   "RUSTUP_HOME=$work_dir/tools/rustup"
   "RUSTUP_TOOLCHAIN=$toolchain"
+  'RUSTUP_AUTO_INSTALL=0'
   "CARGO_HOME=$work_dir/deps/cargo"
   "CARGO_TARGET_DIR=$work_dir/target"
   'CARGO_INCREMENTAL=0' 'CARGO_BUILD_JOBS=2'
